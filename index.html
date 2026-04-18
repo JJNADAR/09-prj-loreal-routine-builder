@@ -1,92 +1,130 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>L'Oréal | Smart Routine &amp; Product Advisor</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
-    />
-    <link rel="stylesheet" href="style.css" />
-  </head>
+let products = [];
+let selectedProducts = [];
 
-  <body>
-    <div class="page-wrapper">
-      <!------- Header / Branding ------->
-      <header class="site-header">
-        <img src="img/loreal-logo.png" alt="L'Oréal Logo" class="logo" />
-        <h1 class="site-title">Smart Routine &amp; Product Advisor</h1>
-      </header>
+// Load products.json
+async function loadProducts() {
+  const res = await fetch("products.json");
+  products = await res.json();
+  renderProducts(products);
+}
 
-      <!-- Category Filter -->
-      <div class="search-section">
-        <select id="categoryFilter">
-          <option value="" disabled selected>Choose a Category</option>
-          <option value="cleanser">Cleansers</option>
-          <option value="moisturizer">Moisturizers & Treatments</option>
-          <option value="haircare">Haircare</option>
-          <option value="makeup">Makeup</option>
-          <option value="hair color">Hair Color</option>
-          <option value="hair styling">Hair Styling</option>
-          <option value="men's grooming">Men's Grooming</option>
-          <option value="suncare">Suncare</option>
-          <option value="fragrance">Fragrance</option>
-        </select>
-      </div>
+// Render product cards
+function renderProducts(list) {
+  const container = document.getElementById("productsContainer");
+  container.innerHTML = "";
 
-      <!-- Products Grid -->
-      <div id="productsContainer" class="products-grid"></div>
+  list.forEach((product, index) => {
+    const card = document.createElement("div");
+    card.className = "product-card";
 
-      <!-- Selected Products -->
-      <div class="selected-products">
-        <h2>Selected Products</h2>
-        <div id="selectedProductsList"></div>
-        <button id="generateRoutine" class="generate-btn">
-          <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Routine
-        </button>
-      </div>
+    card.innerHTML = `
+      <h3>${product.name}</h3>
+      <p>${product.brand}</p>
+      <p class="category">${product.category}</p>
+      <button onclick="toggleProduct(${index})">
+        ${selectedProducts.includes(product) ? "Remove" : "Add"}
+      </button>
+    `;
 
-      <!------- Chat Area ------->
-      <section class="chatbox">
-        <h2>Let's Build Your Routine</h2>
-        <div id="chatWindow" class="chat-window"></div>
+    container.appendChild(card);
+  });
+}
 
-        <form id="chatForm" class="chat-form">
-          <label for="userInput" class="visually-hidden">Message</label>
-          <input
-            id="userInput"
-            name="userInput"
-            type="text"
-            placeholder="Ask me about products or routines…"
-            autocomplete="off"
-            required
-          />
-          <button type="submit" id="sendBtn">
-            <i class="fa-solid fa-paper-plane"></i>
-            <span class="visually-hidden">Send</span>
-          </button>
-        </form>
-      </section>
+// Select / unselect product
+function toggleProduct(index) {
+  const product = products[index];
 
-      <!------- Footer Links ------->
-      <footer class="site-footer">
-        <p>&copy; 2025 L'Oréal. All rights reserved.</p>
-        <nav>
-          <!-- These URLs are placeholders -->
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Use</a>
-          <a href="#">Contact</a>
-        </nav>
-      </footer>
-    </div>
+  const exists = selectedProducts.find(p => p.name === product.name);
 
-    <!-- secrets.js can be removed when using Cloudflare Workers for API requests -->
-    <script src="secrets.js"></script>
-    <script src="script.js"></script>
-  </body>
-</html>
+  if (exists) {
+    selectedProducts = selectedProducts.filter(p => p.name !== product.name);
+  } else {
+    selectedProducts.push(product);
+  }
+
+  updateSelectedUI();
+  renderProducts(products);
+}
+
+// Update selected products UI
+function updateSelectedUI() {
+  const list = document.getElementById("selectedProductsList");
+  list.innerHTML = "";
+
+  selectedProducts.forEach((p) => {
+    const item = document.createElement("div");
+    item.className = "selected-item";
+    item.innerHTML = `
+      <p>${p.name}</p>
+      <button onclick="removeSelected('${p.name}')">X</button>
+    `;
+    list.appendChild(item);
+  });
+
+  // save locally
+  localStorage.setItem("selectedProducts", JSON.stringify(selectedProducts));
+}
+
+// Remove selected product
+function removeSelected(name) {
+  selectedProducts = selectedProducts.filter(p => p.name !== name);
+  updateSelectedUI();
+  renderProducts(products);
+}
+
+// Generate routine (FAKE AI RESPONSE for now)
+function generateRoutine() {
+  const chat = document.getElementById("chatWindow");
+
+  if (selectedProducts.length === 0) {
+    chat.innerHTML += `<p><strong>AI:</strong> Please select products first.</p>`;
+    return;
+  }
+
+  let routine = "Here is your personalized routine:\n\n";
+
+  selectedProducts.forEach((p, i) => {
+    routine += `${i + 1}. ${p.name} - ${p.category}\n`;
+  });
+
+  routine += "\nUse these daily for best results.";
+
+  chat.innerHTML += `<p><strong>AI Routine:</strong><br>${routine.replace(/\n/g, "<br>")}</p>`;
+}
+
+// Chat system (simple follow-up)
+document.getElementById("chatForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const input = document.getElementById("userInput");
+  const chat = document.getElementById("chatWindow");
+
+  const userText = input.value;
+
+  chat.innerHTML += `<p><strong>You:</strong> ${userText}</p>`;
+  chat.innerHTML += `<p><strong>AI:</strong> I can help you refine your routine based on your selected products.</p>`;
+
+  input.value = "";
+});
+
+// Generate button
+document.getElementById("generateRoutine").addEventListener("click", generateRoutine);
+
+// Category filter
+document.getElementById("categoryFilter").addEventListener("change", (e) => {
+  const filtered = products.filter(p => p.category === e.target.value);
+  renderProducts(filtered);
+});
+
+// Load saved data
+function loadSaved() {
+  const saved = localStorage.getItem("selectedProducts");
+  if (saved) {
+    selectedProducts = JSON.parse(saved);
+    updateSelectedUI();
+  }
+}
+
+// Init
+loadProducts();
+loadSaved();
